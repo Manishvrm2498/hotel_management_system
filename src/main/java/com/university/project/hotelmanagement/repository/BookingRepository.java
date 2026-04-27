@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +30,14 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     @Query("SELECT COUNT(b) > 0 FROM Booking b WHERE b.room.id = :roomId " +
             "AND (:checkIn < b.checkOutDate AND :checkOut > b.checkInDate)")
     boolean existsByRoomIdAndDateRange(Long roomId, LocalDate checkIn, LocalDate checkOut);
+
+
+    @Query("SELECT COUNT(b) FROM Booking b " +
+            "WHERE b.hotel.id = :hotelId " +
+            "AND b.status = 'CONFIRMED' " +
+            "AND NOT (b.checkOutDate <= :checkInDate OR b.checkInDate >= :checkOutDate)")
+    long countOverlappingBookings(Long hotelId, LocalDate checkInDate, LocalDate checkOutDate);
+
+    void deleteByStatusAndBookedAtBefore(String pending, LocalDateTime cutoff);
 }
+

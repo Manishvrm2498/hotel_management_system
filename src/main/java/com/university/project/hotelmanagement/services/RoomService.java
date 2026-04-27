@@ -29,6 +29,7 @@ public class RoomService {
     }
 
     public RoomResponseDTO getRoomById(Long roomId) {
+        SecurityContextHolder.getContext().getAuthentication();
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found with ID: " + roomId));
 

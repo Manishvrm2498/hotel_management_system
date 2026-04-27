@@ -7,16 +7,20 @@ import com.university.project.hotelmanagement.entity.Booking;
 import com.university.project.hotelmanagement.entity.Hotel;
 import com.university.project.hotelmanagement.entity.Room;
 import com.university.project.hotelmanagement.entity.UserEntity;
+import com.university.project.hotelmanagement.exception.BadRequestException;
 import com.university.project.hotelmanagement.exception.ResourceNotFoundException;
 import com.university.project.hotelmanagement.repository.BookingRepository;
 import com.university.project.hotelmanagement.repository.RoomRepository;
 import com.university.project.hotelmanagement.repository.UserRepository;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,13 +31,11 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
-    private final EmailService mailService;
 
-    public BookingService(BookingRepository bookingRepository, RoomRepository roomRepository, UserRepository userRepository, EmailService mailService) {
+    public BookingService(BookingRepository bookingRepository, RoomRepository roomRepository, UserRepository userRepository) {
         this.bookingRepository = bookingRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
-        this.mailService = mailService;
     }
 
     private UserEntity getCurrentUser() {
@@ -47,22 +49,40 @@ public class BookingService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found in database"));
     }
 
+
+    @Scheduled(fixedRate = 60000)
+    @Transactional
+    public void deleteExpiredBookings() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(10);
+        bookingRepository.deleteByStatusAndBookedAtBefore("PENDING", cutoff);
+
+    }
+
+
+
     @Transactional
     public BookingResponseDTO createBooking(BookingRequestDTO request) {
         UserEntity currentUser = getCurrentUser();
 
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found!"));
+
+        if (request.getCheckInDate() == null || request.getCheckOutDate() == null) {
+            throw new BadRequestException("Dates cannot be null. Please use yyyy-MM-dd format.");
+        }
+
         long days = ChronoUnit.DAYS.between(request.getCheckInDate(), request.getCheckOutDate());
         if (days <= 0) {
-            throw new IllegalArgumentException("Check-out date must be after Check-in date");
+            throw new BadRequestException("Check-out date must be after Check-in date");
         }
+
         boolean isBooked = bookingRepository.existsByRoomIdAndDateRange(
                 request.getRoomId(), request.getCheckInDate(), request.getCheckOutDate());
 
         if (isBooked) {
-            throw new IllegalStateException("Room is already booked for these dates!");
+            throw new BadRequestException("Room is already booked for these dates!");
         }
+
         Booking booking = new Booking();
         booking.setCheckInDate(request.getCheckInDate());
         booking.setCheckOutDate(request.getCheckOutDate());
@@ -71,24 +91,9 @@ public class BookingService {
         booking.setHotel(room.getHotel());
         booking.setTotalGuests(request.getTotalGuests());
         booking.setTotalPrice(days * room.getPrice());
-        booking.setStatus("CONFIRMED");
-
+        booking.setStatus("PENDING");
+        booking.setBookedAt(LocalDateTime.now());
         Booking savedBooking = bookingRepository.save(booking);
-        try {
-            String displayName = (currentUser.getFirstName() != null) ?
-                    currentUser.getFirstName() : currentUser.getEmail().split("@")[0];
-
-            mailService.sendBookingConfirmation(
-                    currentUser.getEmail(),
-                    displayName,
-                    room.getHotel().getName(),
-                    room.getType(),
-                    savedBooking.getTotalPrice()
-            );
-        } catch (Exception e) {
-            System.err.println("Booking saved but Email failed: " + e.getMessage());
-        }
-
         return mapToResponse(savedBooking);
     }
 
@@ -165,6 +170,7 @@ public class BookingService {
         response.setCheckOutDate(b.getCheckOutDate());
         response.setTotalPrice(b.getTotalPrice());
         response.setStatus(b.getStatus());
+        response.setBookedAt(b.getBookedAt());
         response.setUsername(b.getUser().getFirstName()+" "+b.getUser().getLastName());
         return response;
     }

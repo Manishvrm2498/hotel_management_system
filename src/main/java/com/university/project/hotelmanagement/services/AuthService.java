@@ -105,7 +105,7 @@ public class AuthService {
     }
 
 
-    @Scheduled(fixedRate = 300000)
+    @Scheduled(fixedRate = 60000)
     @Transactional
     public void deleteUnverifiedUsers() {
         LocalDateTime cutoff = LocalDateTime.now();

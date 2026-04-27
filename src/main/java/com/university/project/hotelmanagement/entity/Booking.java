@@ -3,6 +3,7 @@ package com.university.project.hotelmanagement.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 
 @Entity
@@ -16,6 +17,7 @@ public class Booking {
     private int totalGuests;
     private double totalPrice;
     private String status;
+    private LocalDateTime bookedAt;
 
     @ManyToOne
     @JoinColumn(name = "user_id")

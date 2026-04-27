@@ -48,7 +48,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**", "/otp/**").permitAll()
                         .requestMatchers("/api/hotels/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/rooms/**").permitAll()
                         .requestMatchers("/api/bookings/**").authenticated()
+                        .requestMatchers("/api/payment/**").authenticated()
                         .anyRequest().authenticated()
                 )
 

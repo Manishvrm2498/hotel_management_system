@@ -1,12 +1,13 @@
 package com.university.project.hotelmanagement.controller;
 
+import com.university.project.hotelmanagement.dto.RoomRequest;
 import com.university.project.hotelmanagement.dto.RoomResponseDTO;
 import com.university.project.hotelmanagement.services.RoomService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/admin/rooms")
+@RequestMapping("/api/rooms")
 public class RoomController {
 
 
@@ -16,20 +17,17 @@ public class RoomController {
         this.roomService = roomService;
     }
 
-    // View
     @GetMapping("/{id}")
     public ResponseEntity<RoomResponseDTO> getRoom(@PathVariable Long id) {
         return ResponseEntity.ok(roomService.getRoomById(id));
     }
 
-    // Update
-//    @PutMapping("/{id}")
-//    public ResponseEntity<String> updateRoom(@PathVariable Long id,
-//                                             @RequestBody RoomRequest roomDto,
-//                                             @AuthenticationPrincipal UserDetails userDetails) {
-//        roomService.updateRoom(id, roomDto, userDetails);
-//        return ResponseEntity.ok("Room updated successfully!");
-//    }
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateRoom(@PathVariable Long id,
+                                             @RequestBody RoomRequest roomDto) {
+        roomService.updateRoom(id, roomDto);
+        return ResponseEntity.ok("Room updated successfully!");
+    }
 
     // Delete
 //    @DeleteMapping("/{id}")

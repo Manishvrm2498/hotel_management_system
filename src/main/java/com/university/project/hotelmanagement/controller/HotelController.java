@@ -4,11 +4,15 @@ import com.university.project.hotelmanagement.dto.HotelRequestDTO;
 import com.university.project.hotelmanagement.dto.HotelResponseDTO;
 import com.university.project.hotelmanagement.dto.RoomResponseDTO;
 import com.university.project.hotelmanagement.entity.Hotel;
+import com.university.project.hotelmanagement.repository.HotelRepository;
 import com.university.project.hotelmanagement.services.HotelService;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -23,9 +27,21 @@ public class HotelController {
 
     @GetMapping("/search")
     public ResponseEntity<List<HotelResponseDTO>> searchByLocation(
-            @RequestParam String state,
-            @RequestParam String district) {
-        return ResponseEntity.ok(hotelService.searchByLocation(state, district));
+            @RequestParam(required = false) String state,
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) String name) {
+        return ResponseEntity.ok(hotelService.searchByLocation(state, district,name));
+    }
+
+    @GetMapping("/availability")
+    public ResponseEntity<?> checkAvailability(
+            @RequestParam String district,
+            @RequestParam LocalDate checkIn,
+            @RequestParam LocalDate checkOut) {
+
+        return ResponseEntity.ok(
+                hotelService.checkAvailability(district, checkIn, checkOut)
+        );
     }
 
     @GetMapping("/{hotelId}/rooms")
@@ -41,16 +57,6 @@ public class HotelController {
     @GetMapping("/{id}")
     public ResponseEntity<List<HotelResponseDTO>> getHotel(@PathVariable Long id) {
         return ResponseEntity.ok(hotelService.searchHotelByID(id));
-    }
-
-    @GetMapping("/search/state")
-    public ResponseEntity<List<HotelResponseDTO>> getHotelByState(@RequestParam String state) {
-        return ResponseEntity.ok(hotelService.searchHotelByState(state));
-    }
-
-    @GetMapping("/search/district")
-    public ResponseEntity<List<HotelResponseDTO>> getHotelByDistrict(@RequestParam String district) {
-        return ResponseEntity.ok(hotelService.searchHotelByDistrict(district));
     }
 
     @GetMapping("/searchBy")

@@ -11,7 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -24,10 +27,15 @@ public class BookingController {
     }
 
     @PostMapping("/confirm")
-    public ResponseEntity<BookingResponseDTO> bookRoom(@Valid @RequestBody BookingRequestDTO request) {
+    public ResponseEntity<Map<String, Object>> bookRoom(@Valid @RequestBody BookingRequestDTO request) {
         BookingResponseDTO response = bookingService.createBooking(request);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("message", "Booking initiated successfully! Please proceed to payment to confirm your stay.");
+        body.put("bookingId", response.getId());
+        body.put("data", response);
+        return new ResponseEntity<>(body, HttpStatus.CREATED);
     }
+
     @GetMapping("/my-bookings")
     public ResponseEntity<List<BookingResponseDTO>> getUserBookings() {
         List<BookingResponseDTO> bookings = bookingService.getBookingsByUser();

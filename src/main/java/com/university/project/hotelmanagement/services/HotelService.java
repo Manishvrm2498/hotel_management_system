@@ -7,8 +7,11 @@ import com.university.project.hotelmanagement.dto.RoomResponseDTO;
 import com.university.project.hotelmanagement.entity.Hotel;
 import com.university.project.hotelmanagement.entity.Room;
 import com.university.project.hotelmanagement.entity.UserEntity;
+import com.university.project.hotelmanagement.exception.BadRequestException;
 import com.university.project.hotelmanagement.exception.DuplicateResourceException;
+import com.university.project.hotelmanagement.exception.InvalidCredentialsException;
 import com.university.project.hotelmanagement.exception.ResourceNotFoundException;
+import com.university.project.hotelmanagement.repository.BookingRepository;
 import com.university.project.hotelmanagement.repository.HotelRepository;
 import com.university.project.hotelmanagement.repository.RoomRepository;
 import com.university.project.hotelmanagement.repository.UserRepository;
@@ -17,7 +20,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,11 +31,13 @@ public class HotelService {
     private final HotelRepository hotelRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final BookingRepository bookingRepository;
 
-    public HotelService(HotelRepository hotelRepository, RoomRepository roomRepository, UserRepository userRepository) {
+    public HotelService(HotelRepository hotelRepository, RoomRepository roomRepository, UserRepository userRepository, BookingRepository bookingRepository) {
         this.hotelRepository = hotelRepository;
         this.roomRepository = roomRepository;
         this.userRepository = userRepository;
+        this.bookingRepository = bookingRepository;
     }
 
 
@@ -59,8 +66,37 @@ public class HotelService {
         return mapToHotelDTO(hotelRepository.save(hotel));
     }
 
-    public List<HotelResponseDTO> searchByLocation(String state, String district) {
-        return hotelRepository.findByStateAndDistrict(state, district).stream()
+
+    public List<HotelResponseDTO> checkAvailability(String district, LocalDate checkIn, LocalDate checkOut) {
+
+        if (checkIn.isBefore(LocalDate.now())) {
+            throw new InvalidCredentialsException("Check-in date cannot be in the past");
+        }
+        if (!checkIn.isBefore(checkOut)) {
+            throw new InvalidCredentialsException("Check-in date must be before Check-out date");
+        }
+
+        List<Hotel> hotels = hotelRepository.findByDistrict(district);
+        if (hotels.isEmpty()) {
+            throw new ResourceNotFoundException("No hotels found in district: " + district);
+        }
+
+        List<HotelResponseDTO> availableHotels = hotels.stream()
+                .filter(hotel -> bookingRepository.countOverlappingBookings(
+                        hotel.getId(), checkIn, checkOut) == 0)
+                .map(this::mapToHotelDTO)
+                .collect(Collectors.toList());
+
+        if (availableHotels.isEmpty()) {
+            throw new ResourceNotFoundException("No availability for the selected dates");
+        }
+
+        return availableHotels;
+    }
+
+
+    public List<HotelResponseDTO> searchByLocation(String state, String district,String name) {
+        return hotelRepository.findByStateDistrictAndName(state, district,name).stream()
                 .map(this::mapToHotelDTO).collect(Collectors.toList());
     }
 
@@ -79,22 +115,6 @@ public class HotelService {
 
     }
 
-    public List<HotelResponseDTO> searchHotelByState(String state) {
-
-        return hotelRepository.findByStateContainingIgnoreCase(state)
-                .stream()
-                .map(this::mapToHotelDTO)
-                .collect(Collectors.toList());
-    }
-
-
-    public List<HotelResponseDTO> searchHotelByDistrict(String district) {
-
-        return hotelRepository.findByDistrictContainingIgnoreCase(district)
-                .stream()
-                .map(this::mapToHotelDTO)
-                .collect(Collectors.toList());
-    }
 
     public List<HotelResponseDTO> searchHotels(String name, String district, Double rating) {
 
